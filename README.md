@@ -26,14 +26,19 @@ No new page or component file is needed.
 
 ## Cost models
 
-Model A keeps overhead as separate daily sliders:
+Model A keeps the original multi-machine monthly-cost structure:
 
-- Rent
-- Mechanic
-- Supervisor
-- Transport
+- Machines, CPM, shifts, hours, and working days
+- Monthly operator salaries
+- Monthly rent, mechanic/repair, supervisor, and transport
+- Power per box
 
-Model B keeps overhead consolidated and adds maintenance as a percentage of base unit cost.
+Model B keeps the original single-machine daily-cost structure:
+
+- CPM, shifts, hours, and working days
+- Operator cost per day
+- Electricity per box
+- Material, bottom, cover, packet, and box assumptions
 
 ## Local state
 

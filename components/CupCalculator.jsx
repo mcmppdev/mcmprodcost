@@ -21,6 +21,13 @@ function formatNumber(value, kind) {
     return `${round(value, 2)}%`;
   }
 
+  if (kind === "decimal") {
+    return new Intl.NumberFormat("en-IN", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(value);
+  }
+
   return new Intl.NumberFormat("en-IN", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 3
@@ -28,45 +35,85 @@ function formatNumber(value, kind) {
 }
 
 function calculateModelA(values) {
-  const baseUnitCost =
-    values.materialCost + values.packingCost + values.powerCost + values.laborCost;
-  const overheadPerCup =
-    (values.rent + values.mechanic + values.supervisor + values.transport) /
-    values.dailyOutput;
-  const scrapCost = baseUnitCost * (values.scrapPercent / 100);
-  const totalCost = baseUnitCost + overheadPerCup + scrapCost;
-  const profit = values.sellingPrice - totalCost;
+  const cupsPerBox = values.cpp * values.ppb;
+  const dailyOutput =
+    values.mach * values.cpm * 60 * values.hrs * values.shifts;
+  const monthlyOutput = dailyOutput * values.days;
+  const monthlyBoxes = monthlyOutput / cupsPerBox;
+
+  const blankCost = values.bc / values.cpk;
+  const bottomCost = (values.botc * (values.botu / 1000)) / values.cpk;
+  const coverCost = values.cc / values.ppk / values.cpp;
+  const boxCost = values.boxr / cupsPerBox;
+  const materialCost = blankCost + bottomCost + coverCost + boxCost;
+
+  const operatorMonthly = values.ops * values.opS;
+  const laborCost = operatorMonthly / monthlyOutput;
+
+  const fixedOverhead = values.sup + values.rent + values.mech + values.trans;
+  const powerMonthly = monthlyBoxes * values.pwr;
+  const overheadMonthly = fixedOverhead + powerMonthly;
+  const overheadCost = overheadMonthly / monthlyOutput;
+
+  const totalCost = materialCost + laborCost + overheadCost;
+  const profit = values.sp - totalCost;
+  const monthlyProfit = profit * monthlyOutput;
 
   return {
-    baseUnitCost,
-    overheadPerCup,
-    scrapCost,
-    maintenanceCost: 0,
+    cupsPerBox,
+    dailyOutput,
+    monthlyOutput,
+    monthlyBoxes,
+    blankCost,
+    bottomCost,
+    coverCost,
+    boxCost,
+    materialCost,
+    laborCost,
+    overheadCost,
+    powerCost: powerMonthly / monthlyOutput,
     totalCost,
     profit,
-    marginPercent: values.sellingPrice ? (profit / values.sellingPrice) * 100 : 0,
-    dailyProfit: profit * values.dailyOutput
+    marginPercent: values.sp ? (profit / values.sp) * 100 : 0,
+    monthlyProfit
   };
 }
 
 function calculateModelB(values) {
-  const baseUnitCost =
-    values.materialCost + values.packingCost + values.powerCost + values.laborCost;
-  const overheadPerCup = values.overheadPerDay / values.dailyOutput;
-  const maintenanceCost = baseUnitCost * (values.maintenancePercent / 100);
-  const scrapCost = (baseUnitCost + maintenanceCost) * (values.scrapPercent / 100);
-  const totalCost = baseUnitCost + overheadPerCup + maintenanceCost + scrapCost;
-  const profit = values.sellingPrice - totalCost;
+  const cupsPerBox = values.cpp * values.ppb;
+  const dailyOutput = values.cpm * 60 * values.hrs * values.shift;
+  const monthlyOutput = dailyOutput * values.days;
+  const monthlyBoxes = monthlyOutput / cupsPerBox;
+
+  const blankCost = values.bc / values.cpk;
+  const bottomCost = (values.botc * (values.botu / 1000)) / values.cpk;
+  const coverCost = values.cc / (values.ppk * values.cpp);
+  const boxCost = values.boxr / cupsPerBox;
+  const laborCost = dailyOutput > 0 ? (values.lab * values.ops) / dailyOutput : 0;
+  const powerCost = values.pwr / cupsPerBox;
+  const materialCost = blankCost + bottomCost + coverCost + boxCost;
+
+  const totalCost = materialCost + laborCost + powerCost;
+  const profit = values.sp - totalCost;
+  const monthlyProfit = profit * monthlyOutput;
 
   return {
-    baseUnitCost,
-    overheadPerCup,
-    maintenanceCost,
-    scrapCost,
+    cupsPerBox,
+    dailyOutput,
+    monthlyOutput,
+    monthlyBoxes,
+    blankCost,
+    bottomCost,
+    coverCost,
+    boxCost,
+    materialCost,
+    laborCost,
+    powerCost,
+    overheadCost: laborCost + powerCost,
     totalCost,
     profit,
-    marginPercent: values.sellingPrice ? (profit / values.sellingPrice) * 100 : 0,
-    dailyProfit: profit * values.dailyOutput
+    marginPercent: values.sp ? (profit / values.sp) * 100 : 0,
+    monthlyProfit
   };
 }
 
@@ -156,12 +203,12 @@ export default function CupCalculator({ cup }) {
       </header>
 
       <section className="summary-strip" aria-label="Cost summary">
-        <Metric label="Selling price" value={values.sellingPrice} />
+        <Metric label="Selling price" value={values.sp} />
         <Metric label="Total cost" value={totals.totalCost} />
         <Metric label="Profit/cup" value={totals.profit} tone={profitTone} />
         <Metric
-          label="Daily profit"
-          value={totals.dailyProfit}
+          label="Monthly profit"
+          value={totals.monthlyProfit}
           kind="currencyDay"
           tone={profitTone}
         />
@@ -209,12 +256,28 @@ export default function CupCalculator({ cup }) {
 
       <section className="breakdown" aria-label="Cost breakdown">
         <h2>Breakdown</h2>
-        <BreakdownRow label="Base unit cost" value={totals.baseUnitCost} />
-        <BreakdownRow label="Overhead per cup" value={totals.overheadPerCup} />
-        {cup.modelType === "B" && (
-          <BreakdownRow label="Maintenance cost" value={totals.maintenanceCost} />
+        <BreakdownRow label="Blanks" value={totals.blankCost} />
+        <BreakdownRow label="Bottom" value={totals.bottomCost} />
+        <BreakdownRow label="Cover" value={totals.coverCost} />
+        <BreakdownRow label="Box" value={totals.boxCost} />
+        <BreakdownRow label="Material total" value={totals.materialCost} />
+        <BreakdownRow label="Labor" value={totals.laborCost} />
+        {cup.modelType === "A" ? (
+          <BreakdownRow label="Overhead incl. power" value={totals.overheadCost} />
+        ) : (
+          <BreakdownRow label="Power" value={totals.powerCost} />
         )}
-        <BreakdownRow label="Scrap allowance" value={totals.scrapCost} />
+        <BreakdownRow label="Cups per box" value={totals.cupsPerBox} kind="integer" />
+        <BreakdownRow
+          label="Monthly output"
+          value={totals.monthlyOutput}
+          kind="integer"
+        />
+        <BreakdownRow
+          label="Monthly boxes"
+          value={totals.monthlyBoxes}
+          kind="integer"
+        />
       </section>
     </article>
   );
@@ -229,11 +292,14 @@ function Metric({ label, value, kind = "currency", tone }) {
   );
 }
 
-function BreakdownRow({ label, value }) {
+function BreakdownRow({ label, value, kind = "currency" }) {
   return (
     <div className="breakdown-row">
       <span>{label}</span>
-      <strong>Rs {formatNumber(round(value), "currency")}</strong>
+      <strong>
+        {kind === "currency" ? "Rs " : ""}
+        {formatNumber(round(value), kind)}
+      </strong>
     </div>
   );
 }
