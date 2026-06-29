@@ -129,43 +129,159 @@ function getStoredState(slug) {
   }
 }
 
+function withoutVariantFields(values, variantFields = []) {
+  return Object.fromEntries(
+    Object.entries(values).filter(([field]) => !variantFields.includes(field))
+  );
+}
+
+function getFactoryState(cup) {
+  if (!cup.variants?.length) {
+    return {
+      shared: cup.defaults,
+      variants: {}
+    };
+  }
+
+  return {
+    shared: withoutVariantFields(cup.defaults, cup.variantFields),
+    variants: Object.fromEntries(
+      cup.variants.map((variant) => [
+        variant.id,
+        {
+          ...variant.defaults
+        }
+      ])
+    )
+  };
+}
+
+function isVariantField(cup, field) {
+  return cup.variantFields?.includes(field);
+}
+
+function getInitialVariant(cup) {
+  return cup.initialVariant || cup.defaultVariant || cup.variants?.[0]?.id;
+}
+
+function getRouteVariant(cup) {
+  return cup.variants?.find((variant) => variant.id === cup.requestedSlug)?.id;
+}
+
+function isFactoryState(current, factory) {
+  return (
+    JSON.stringify(current.shared) === JSON.stringify(factory.shared) &&
+    JSON.stringify(current.variants) === JSON.stringify(factory.variants)
+  );
+}
+
 export default function CupCalculator({ cup }) {
   const fields = modelFields[cup.modelType];
-  const factoryDefaults = cup.defaults;
-  const [values, setValues] = useState(cup.defaults);
+  const hasVariants = Boolean(cup.variants?.length);
+  const factoryState = useMemo(() => getFactoryState(cup), [cup]);
+  const initialVariant = getInitialVariant(cup);
+  const [selectedVariant, setSelectedVariant] = useState(initialVariant);
+  const [sharedValues, setSharedValues] = useState(factoryState.shared);
+  const [variantValues, setVariantValues] = useState(factoryState.variants);
   const [baseline, setBaseline] = useState("Factory defaults");
+
+  const values = useMemo(() => {
+    if (!hasVariants) {
+      return sharedValues;
+    }
+
+    return {
+      ...sharedValues,
+      ...variantValues[selectedVariant]
+    };
+  }, [hasVariants, selectedVariant, sharedValues, variantValues]);
 
   useEffect(() => {
     const stored = getStoredState(cup.slug);
 
+    if (hasVariants) {
+      const routeVariant = getRouteVariant(cup);
+      const storedVariant = cup.variants.some(
+        (variant) => variant.id === stored?.selectedVariant
+      )
+        ? stored.selectedVariant
+        : initialVariant;
+
+      setSelectedVariant(routeVariant || storedVariant);
+      setSharedValues({
+        ...factoryState.shared,
+        ...(stored?.shared || {})
+      });
+      setVariantValues({
+        ...factoryState.variants,
+        ...(stored?.variants || {})
+      });
+      setBaseline(stored ? "Saved local state" : "Factory defaults");
+      return;
+    }
+
     if (stored) {
-      setValues({ ...factoryDefaults, ...stored });
+      setSharedValues({ ...factoryState.shared, ...stored });
       setBaseline("Saved local state");
     } else {
-      setValues(factoryDefaults);
+      setSharedValues(factoryState.shared);
       setBaseline("Factory defaults");
     }
-  }, [cup.slug, factoryDefaults]);
+  }, [cup, cup.slug, cup.variants, factoryState, hasVariants, initialVariant]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
 
-    if (JSON.stringify(values) === JSON.stringify(factoryDefaults)) {
+    if (hasVariants) {
+      const payload = {
+        shared: sharedValues,
+        variants: variantValues,
+        selectedVariant
+      };
+
+      if (isFactoryState(payload, factoryState)) {
+        window.localStorage.removeItem(storageKey(cup.slug));
+        return;
+      }
+
+      window.localStorage.setItem(storageKey(cup.slug), JSON.stringify(payload));
+      return;
+    }
+
+    if (JSON.stringify(sharedValues) === JSON.stringify(factoryState.shared)) {
       window.localStorage.removeItem(storageKey(cup.slug));
       return;
     }
 
-    window.localStorage.setItem(storageKey(cup.slug), JSON.stringify(values));
-  }, [cup.slug, factoryDefaults, values]);
+    window.localStorage.setItem(storageKey(cup.slug), JSON.stringify(sharedValues));
+  }, [
+    cup.slug,
+    factoryState,
+    hasVariants,
+    selectedVariant,
+    sharedValues,
+    variantValues
+  ]);
 
   const totals = useMemo(() => {
     return cup.modelType === "A" ? calculateModelA(values) : calculateModelB(values);
   }, [cup.modelType, values]);
 
   function updateValue(field, nextValue) {
-    setValues((current) => ({
+    if (hasVariants && isVariantField(cup, field)) {
+      setVariantValues((current) => ({
+        ...current,
+        [selectedVariant]: {
+          ...current[selectedVariant],
+          [field]: Number(nextValue)
+        }
+      }));
+      return;
+    }
+
+    setSharedValues((current) => ({
       ...current,
       [field]: Number(nextValue)
     }));
@@ -173,12 +289,25 @@ export default function CupCalculator({ cup }) {
 
   function resetToDefaults() {
     window.localStorage.removeItem(storageKey(cup.slug));
-    setValues(factoryDefaults);
+    setSharedValues(factoryState.shared);
+    setVariantValues(factoryState.variants);
     setBaseline("Factory defaults");
   }
 
   function saveAsDefault() {
-    window.localStorage.setItem(storageKey(cup.slug), JSON.stringify(values));
+    if (hasVariants) {
+      window.localStorage.setItem(
+        storageKey(cup.slug),
+        JSON.stringify({
+          shared: sharedValues,
+          variants: variantValues,
+          selectedVariant
+        })
+      );
+    } else {
+      window.localStorage.setItem(storageKey(cup.slug), JSON.stringify(sharedValues));
+    }
+
     setBaseline("Saved local default");
   }
 
@@ -196,6 +325,26 @@ export default function CupCalculator({ cup }) {
           <p className="eyebrow">Model {cup.modelType}</p>
           <h1>{cup.name}</h1>
           <p>{cup.description}</p>
+          {hasVariants && (
+            <div
+              className="variant-selector"
+              role="radiogroup"
+              aria-label="Cup size"
+            >
+              {cup.variants.map((variant) => (
+                <button
+                  key={variant.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selectedVariant === variant.id}
+                  className={selectedVariant === variant.id ? "active" : ""}
+                  onClick={() => setSelectedVariant(variant.id)}
+                >
+                  {variant.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <span className={`profit-badge ${profitTone}`}>
           {formatNumber(totals.marginPercent, "percent")} margin
@@ -238,7 +387,15 @@ export default function CupCalculator({ cup }) {
             <label className="slider-row" key={field}>
               <span>
                 <strong>{meta.label}</strong>
-                <em>{meta.unit}</em>
+                <em>
+                  {meta.unit}
+                  {hasVariants && isVariantField(cup, field)
+                    ? ` for ${
+                        cup.variants.find((variant) => variant.id === selectedVariant)
+                          ?.label
+                      }`
+                    : ""}
+                </em>
               </span>
               <output>{formatNumber(values[field], meta.kind)}</output>
               <input

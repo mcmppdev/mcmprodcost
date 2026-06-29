@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import CupCalculator from "@/components/CupCalculator";
-import { cups, getCupBySlug } from "@/data/cups.config";
+import { cupRouteSlugs, getCupBySlug } from "@/data/cups.config";
 import { notFound } from "next/navigation";
 
 export function generateStaticParams() {
-  return cups.map((cup) => ({ slug: cup.slug }));
+  return cupRouteSlugs.map((slug) => ({ slug }));
 }
 
 export function generateMetadata({ params }) {

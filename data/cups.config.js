@@ -349,22 +349,38 @@ function cup({ slug, name, volumeMl, modelType, description, source }) {
 }
 
 export const cups = [
-  cup({
-    slug: "60ml-short",
-    name: "60 ml Short",
-    volumeMl: 60,
+  {
+    slug: "60-65ml-short",
+    aliases: ["60ml-short", "65ml-short"],
+    name: "60 / 65 ml Short",
+    volumeMl: "60 / 65",
     modelType: "A",
-    description: "New Model A size, seeded from the 65 ml short baseline.",
-    source: modelA65
-  }),
-  cup({
-    slug: "65ml-short",
-    name: "65 ml Short",
-    volumeMl: 65,
-    modelType: "A",
-    description: "Existing Model A multi-machine calculator.",
-    source: modelA65
-  }),
+    description: "Shared Model A calculator with size-specific yield and bottom usage.",
+    defaults: modelA65.defaults,
+    ranges: modelA65.ranges,
+    defaultVariant: "65ml-short",
+    variantFields: ["cpk", "botu"],
+    variants: [
+      {
+        id: "60ml-short",
+        label: "60 ml",
+        volumeMl: 60,
+        defaults: {
+          cpk: 980,
+          botu: 360
+        }
+      },
+      {
+        id: "65ml-short",
+        label: "65 ml",
+        volumeMl: 65,
+        defaults: {
+          cpk: 920,
+          botu: 390
+        }
+      }
+    ]
+  },
   cup({
     slug: "75ml-short",
     name: "75 ml Short",
@@ -438,6 +454,8 @@ export const cups = [
     source: modelB300
   })
 ];
+
+export const cupRouteSlugs = cups.flatMap((cup) => [cup.slug, ...(cup.aliases || [])]);
 
 export const fieldMeta = {
   sp: { label: "Selling price", unit: "Rs/cup", kind: "currency" },
@@ -513,5 +531,17 @@ export const modelFields = {
 };
 
 export function getCupBySlug(slug) {
-  return cups.find((cup) => cup.slug === slug);
+  const cup = cups.find((item) => item.slug === slug || item.aliases?.includes(slug));
+
+  if (!cup) {
+    return undefined;
+  }
+
+  const matchedVariant = cup.variants?.find((variant) => variant.id === slug);
+
+  return {
+    ...cup,
+    requestedSlug: slug,
+    initialVariant: matchedVariant?.id || cup.defaultVariant
+  };
 }

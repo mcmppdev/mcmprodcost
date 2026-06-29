@@ -179,6 +179,33 @@ h2 {
   margin-bottom: 8px;
 }
 
+.variant-selector {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(86px, 1fr));
+  gap: 4px;
+  margin-top: 14px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.variant-selector button {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  background: transparent;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.variant-selector button.active {
+  color: #fff;
+  background: var(--blue);
+}
+
 .profit-badge {
   justify-self: start;
   padding: 10px 12px;
