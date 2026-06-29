@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MCM Cost">
+  <rect width="512" height="512" rx="96" fill="#f7f4ed"/>
+  <path d="M151 96h210l-27 320H178L151 96Z" fill="#ffffff" stroke="#1d2528" stroke-width="24" stroke-linejoin="round"/>
+  <path d="M170 158h172" stroke="#2768a6" stroke-width="22" stroke-linecap="round"/>
+  <path d="M188 244h136" stroke="#9a6b14" stroke-width="22" stroke-linecap="round"/>
+  <path d="M205 330h102" stroke="#19744e" stroke-width="22" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,9 @@
+node_modules
+.next
+out
+dist
+.env*.local
+.vercel
+*.log
+public/sw.js
+public/workbox-*.js

@@ -1,0 +1,386 @@
+:root {
+  --paper: #f7f4ed;
+  --ink: #1d2528;
+  --muted: #657174;
+  --line: #d9d4c8;
+  --panel: #ffffff;
+  --green: #19744e;
+  --red: #b13a2f;
+  --blue: #2768a6;
+  --gold: #9a6b14;
+  --shadow: 0 18px 46px rgba(34, 42, 46, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--paper);
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  color: var(--ink);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 260px),
+    var(--paper);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.shell {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 20px 16px 36px;
+}
+
+.hero {
+  padding: 18px 0 22px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--gold);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  max-width: 720px;
+  margin-bottom: 10px;
+  font-size: clamp(2.1rem, 9vw, 4.6rem);
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+h2 {
+  margin-bottom: 14px;
+  font-size: 1.15rem;
+}
+
+.hero p:not(.eyebrow),
+.calculator-header p:not(.eyebrow) {
+  max-width: 640px;
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.cup-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.cup-card {
+  display: grid;
+  min-height: 164px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 10px 28px rgba(34, 42, 46, 0.06);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.cup-card:hover,
+.cup-card:focus-visible {
+  border-color: rgba(39, 104, 166, 0.55);
+  box-shadow: var(--shadow);
+  outline: none;
+  transform: translateY(-2px);
+}
+
+.cup-card strong {
+  margin-top: 12px;
+  font-size: 1.35rem;
+  line-height: 1.05;
+}
+
+.cup-card > span:not(.model-pill):not(.card-footer) {
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.model-pill {
+  justify-self: start;
+  padding: 5px 8px;
+  border: 1px solid rgba(154, 107, 20, 0.26);
+  border-radius: 999px;
+  color: var(--gold);
+  background: rgba(154, 107, 20, 0.08);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  align-self: end;
+  color: var(--blue);
+  font-weight: 800;
+}
+
+.calculator-shell {
+  padding-top: 14px;
+}
+
+.back-link,
+.primary-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  margin-bottom: 14px;
+  color: var(--blue);
+  font-weight: 800;
+}
+
+.calculator {
+  display: grid;
+  gap: 16px;
+}
+
+.calculator-header {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+  padding-top: 4px;
+}
+
+.calculator-header h1 {
+  margin-bottom: 8px;
+}
+
+.profit-badge {
+  justify-self: start;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.profit-badge.positive,
+.metric.positive strong {
+  background: var(--green);
+}
+
+.profit-badge.negative,
+.metric.negative strong {
+  background: var(--red);
+}
+
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metric {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.metric span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.metric strong {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 1.15rem;
+  line-height: 1.1;
+}
+
+.metric.positive strong,
+.metric.negative strong {
+  padding: 4px 6px;
+  border-radius: 6px;
+  color: #fff;
+}
+
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 48px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.action-row span {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.action-row button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 42px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--panel);
+  cursor: pointer;
+}
+
+.slider-list {
+  display: grid;
+  gap: 10px;
+}
+
+.slider-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.slider-row span {
+  min-width: 0;
+}
+
+.slider-row strong,
+.slider-row em {
+  display: block;
+}
+
+.slider-row strong {
+  line-height: 1.15;
+}
+
+.slider-row em {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+}
+
+.slider-row output {
+  align-self: start;
+  color: var(--blue);
+  font-weight: 900;
+  text-align: right;
+}
+
+.slider-row input {
+  grid-column: 1 / -1;
+  width: 100%;
+  accent-color: var(--blue);
+}
+
+.breakdown {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.breakdown-row span {
+  color: var(--muted);
+}
+
+.breakdown-row strong {
+  text-align: right;
+}
+
+@media (min-width: 620px) {
+  .shell {
+    padding: 32px 24px 52px;
+  }
+
+  .cup-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .calculator-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .profit-badge {
+    justify-self: end;
+  }
+
+  .summary-strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 960px) {
+  .cup-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .calculator {
+    grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.55fr);
+    align-items: start;
+  }
+
+  .calculator-header,
+  .summary-strip,
+  .action-row {
+    grid-column: 1 / -1;
+  }
+
+  .breakdown {
+    position: sticky;
+    top: 18px;
+  }
+}
