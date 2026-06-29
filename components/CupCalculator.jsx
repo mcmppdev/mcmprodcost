@@ -49,15 +49,19 @@ function calculateModelA(values) {
 
   const operatorMonthly = values.ops * values.opS;
   const laborCost = operatorMonthly / monthlyOutput;
-
-  const fixedOverhead = values.sup + values.rent + values.mech + values.trans;
   const powerMonthly = monthlyBoxes * values.pwr;
-  const overheadMonthly = fixedOverhead + powerMonthly;
-  const overheadCost = overheadMonthly / monthlyOutput;
+  const powerCost = powerMonthly / monthlyOutput;
+  const directCostPerCup = materialCost + laborCost + powerCost;
+  const contributionPerCup = values.sp - directCostPerCup;
+  const monthlyContribution = contributionPerCup * monthlyOutput;
 
-  const totalCost = materialCost + laborCost + overheadCost;
-  const profit = values.sp - totalCost;
-  const monthlyProfit = profit * monthlyOutput;
+  const fixedOverheadMonthly =
+    values.rent + values.sup + values.trans + values.mech;
+  const fixedOverheadPerCup = fixedOverheadMonthly / monthlyOutput;
+  const fullyLoadedCostPerCup = directCostPerCup + fixedOverheadPerCup;
+  const netMonthlyProfit = monthlyContribution - fixedOverheadMonthly;
+  const overheadSavingsOpportunity = fixedOverheadMonthly;
+  const savingsPerCup = fixedOverheadPerCup;
 
   return {
     cupsPerBox,
@@ -70,12 +74,21 @@ function calculateModelA(values) {
     boxCost,
     materialCost,
     laborCost,
-    overheadCost,
-    powerCost: powerMonthly / monthlyOutput,
-    totalCost,
-    profit,
-    marginPercent: values.sp ? (profit / values.sp) * 100 : 0,
-    monthlyProfit
+    powerCost,
+    directCostPerCup,
+    contributionPerCup,
+    monthlyContribution,
+    fixedOverheadMonthly,
+    fixedOverheadPerCup,
+    fullyLoadedCostPerCup,
+    netMonthlyProfit,
+    overheadSavingsOpportunity,
+    savingsPerCup,
+    overheadCost: fixedOverheadPerCup,
+    totalCost: fullyLoadedCostPerCup,
+    profit: contributionPerCup,
+    marginPercent: values.sp ? (contributionPerCup / values.sp) * 100 : 0,
+    monthlyProfit: netMonthlyProfit
   };
 }
 
@@ -320,7 +333,8 @@ export default function CupCalculator({ cup }) {
     setBaseline("Factory defaults on next load");
   }
 
-  const profitTone = totals.profit >= 0 ? "positive" : "negative";
+  const profitTone = totals.monthlyProfit >= 0 ? "positive" : "negative";
+  const isModelA = cup.modelType === "A";
 
   return (
     <article className="calculator">
@@ -356,15 +370,35 @@ export default function CupCalculator({ cup }) {
       </header>
 
       <section className="summary-strip" aria-label="Cost summary">
-        <Metric label="Selling price" value={values.sp} />
-        <Metric label="Total cost" value={totals.totalCost} />
-        <Metric label="Profit/cup" value={totals.profit} tone={profitTone} />
-        <Metric
-          label="Monthly profit"
-          value={totals.monthlyProfit}
-          kind="currencyDay"
-          tone={profitTone}
-        />
+        {isModelA ? (
+          <>
+            <Metric label="Selling price" value={values.sp} />
+            <Metric label="Direct cost/cup" value={totals.directCostPerCup} />
+            <Metric
+              label="Contribution/cup"
+              value={totals.contributionPerCup}
+              tone={totals.contributionPerCup >= 0 ? "positive" : "negative"}
+            />
+            <Metric
+              label="Net monthly profit"
+              value={totals.netMonthlyProfit}
+              kind="currencyDay"
+              tone={profitTone}
+            />
+          </>
+        ) : (
+          <>
+            <Metric label="Selling price" value={values.sp} />
+            <Metric label="Total cost" value={totals.totalCost} />
+            <Metric label="Profit/cup" value={totals.profit} tone={profitTone} />
+            <Metric
+              label="Monthly profit"
+              value={totals.monthlyProfit}
+              kind="currencyDay"
+              tone={profitTone}
+            />
+          </>
+        )}
       </section>
 
       <div className="action-row">
@@ -424,8 +458,36 @@ export default function CupCalculator({ cup }) {
         <BreakdownRow label="Box" value={totals.boxCost} />
         <BreakdownRow label="Material total" value={totals.materialCost} />
         <BreakdownRow label="Labor" value={totals.laborCost} />
-        {cup.modelType === "A" ? (
-          <BreakdownRow label="Overhead incl. power" value={totals.overheadCost} />
+        {isModelA ? (
+          <>
+            <BreakdownRow label="Power" value={totals.powerCost} />
+            <BreakdownRow
+              label="Production cost before overhead"
+              value={totals.directCostPerCup}
+            />
+            <BreakdownRow
+              label="Contribution before overhead"
+              value={totals.monthlyContribution}
+            />
+            <BreakdownRow
+              label="Fixed overhead deducted"
+              value={totals.fixedOverheadMonthly}
+            />
+            <BreakdownRow label="Net after overhead" value={totals.netMonthlyProfit} />
+            <BreakdownRow
+              label="Fixed overhead per cup"
+              value={totals.fixedOverheadPerCup}
+            />
+            <BreakdownRow
+              label="Fully loaded cost/cup"
+              value={totals.fullyLoadedCostPerCup}
+            />
+            <BreakdownRow
+              label="Savings opportunity"
+              value={totals.overheadSavingsOpportunity}
+            />
+            <BreakdownRow label="Savings per cup" value={totals.savingsPerCup} />
+          </>
         ) : (
           <BreakdownRow label="Power" value={totals.powerCost} />
         )}
