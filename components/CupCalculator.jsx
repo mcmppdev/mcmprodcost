@@ -382,37 +382,38 @@ export default function CupCalculator({ cup }) {
         </button>
       </div>
 
-      <section className="slider-list" aria-label="Calculator inputs">
-        {fields.map((field) => {
-          const [min, max, step] = cup.ranges[field];
-          const meta = fieldMeta[field];
-
-          return (
-            <label className="slider-row" key={field}>
-              <span>
-                <strong>{meta.label}</strong>
-                <em>
-                  {meta.unit}
-                  {hasVariants && isVariantField(cup, field)
-                    ? ` for ${
-                        cup.variants.find((variant) => variant.id === selectedVariant)
-                          ?.label
-                      }`
-                    : ""}
-                </em>
-              </span>
-              <output>{formatNumber(values[field], meta.kind)}</output>
-              <input
-                type="range"
-                min={min}
-                max={max}
-                step={step}
-                value={values[field]}
-                onChange={(event) => updateValue(field, event.target.value)}
-              />
-            </label>
-          );
-        })}
+      <section className="input-groups" aria-label="Calculator inputs">
+        {hasVariants ? (
+          <>
+            <SliderGroup
+              title={`Variant inputs - ${
+                cup.variants.find((variant) => variant.id === selectedVariant)?.label
+              }`}
+              fields={fields.filter((field) => isVariantField(cup, field))}
+              cup={cup}
+              values={values}
+              selectedVariant={selectedVariant}
+              onChange={updateValue}
+            />
+            <SliderGroup
+              title="Shared fixed costs"
+              fields={fields.filter((field) => !isVariantField(cup, field))}
+              cup={cup}
+              values={values}
+              selectedVariant={selectedVariant}
+              onChange={updateValue}
+            />
+          </>
+        ) : (
+          <SliderGroup
+            title="Inputs"
+            fields={fields}
+            cup={cup}
+            values={values}
+            selectedVariant={selectedVariant}
+            onChange={updateValue}
+          />
+        )}
       </section>
 
       <section className="breakdown" aria-label="Cost breakdown">
@@ -441,6 +442,46 @@ export default function CupCalculator({ cup }) {
         />
       </section>
     </article>
+  );
+}
+
+function SliderGroup({ title, fields, cup, values, selectedVariant, onChange }) {
+  return (
+    <div className="slider-group">
+      <h2>{title}</h2>
+      <div className="slider-list">
+        {fields.map((field) => {
+          const [min, max, step] = cup.ranges[field];
+          const meta = fieldMeta[field];
+          const selectedLabel = cup.variants?.find(
+            (variant) => variant.id === selectedVariant
+          )?.label;
+
+          return (
+            <label className="slider-row" key={field}>
+              <span>
+                <strong>{meta.label}</strong>
+                <em>
+                  {meta.unit}
+                  {isVariantField(cup, field) && selectedLabel
+                    ? ` for ${selectedLabel}`
+                    : ""}
+                </em>
+              </span>
+              <output>{formatNumber(values[field], meta.kind)}</output>
+              <input
+                type="range"
+                min={min}
+                max={max}
+                step={step}
+                value={values[field]}
+                onChange={(event) => onChange(field, event.target.value)}
+              />
+            </label>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

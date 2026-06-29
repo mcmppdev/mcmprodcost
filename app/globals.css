@@ -297,9 +297,21 @@ h2 {
   cursor: pointer;
 }
 
+.input-groups,
 .slider-list {
   display: grid;
   gap: 10px;
+}
+
+.slider-group {
+  display: grid;
+  gap: 10px;
+}
+
+.slider-group h2 {
+  margin: 4px 2px 0;
+  color: var(--ink);
+  font-size: 0.95rem;
 }
 
 .slider-row {
