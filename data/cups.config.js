@@ -355,19 +355,25 @@ export const cups = [
     name: "60 / 65 ml Short",
     volumeMl: "60 / 65",
     modelType: "A",
-    description: "Shared Model A calculator with size-specific yield and bottom usage.",
+    description: "Shared Model A calculator with size-specific production inputs.",
     defaults: modelA65.defaults,
     ranges: modelA65.ranges,
     defaultVariant: "65ml-short",
-    variantFields: ["cpk", "botu"],
+    variantFields: ["sp", "cpk", "botu", "mach", "cpm", "shifts", "ops", "days"],
     variants: [
       {
         id: "60ml-short",
         label: "60 ml",
         volumeMl: 60,
         defaults: {
+          sp: 0.215,
           cpk: 980,
-          botu: 360
+          botu: 360,
+          mach: 3,
+          cpm: 85,
+          shifts: 1,
+          ops: 3,
+          days: 24
         }
       },
       {
@@ -375,8 +381,14 @@ export const cups = [
         label: "65 ml",
         volumeMl: 65,
         defaults: {
+          sp: 0.215,
           cpk: 920,
-          botu: 390
+          botu: 390,
+          mach: 3,
+          cpm: 85,
+          shifts: 1,
+          ops: 3,
+          days: 24
         }
       }
     ]

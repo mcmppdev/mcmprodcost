@@ -135,6 +135,10 @@ function withoutVariantFields(values, variantFields = []) {
   );
 }
 
+function getStoredSharedState(cup, stored) {
+  return withoutVariantFields(stored?.shared || {}, cup.variantFields);
+}
+
 function getFactoryState(cup) {
   if (!cup.variants?.length) {
     return {
@@ -210,7 +214,7 @@ export default function CupCalculator({ cup }) {
       setSelectedVariant(routeVariant || storedVariant);
       setSharedValues({
         ...factoryState.shared,
-        ...(stored?.shared || {})
+        ...getStoredSharedState(cup, stored)
       });
       setVariantValues({
         ...factoryState.variants,

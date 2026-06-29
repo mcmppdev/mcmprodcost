@@ -24,6 +24,10 @@ To add a new cup size:
 
 No new page or component file is needed.
 
+The `60 / 65 ml Short` calculator is one combined config with variants. Its
+selling price, yield, bottom usage, machines, machine speed, shifts, operators,
+and working days are stored separately for 60 ml and 65 ml.
+
 ## Cost models
 
 Model A keeps the original multi-machine monthly-cost structure:
