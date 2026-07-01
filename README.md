@@ -46,10 +46,30 @@ Model B keeps the original single-machine daily-cost structure:
 
 ## Local state
 
-Slider changes are stored in `localStorage` per cup slug.
+Slider changes are cached in `localStorage` per cup slug.
 
 - Reset clears the saved local state for that cup and returns to factory defaults from config.
-- Save stores the current slider state as the local default for that browser.
+- Save stores the current slider state as the global default when a server store is configured, and falls back to local browser storage when it is not.
 - The trash icon clears saved state without changing the visible sliders until reload or further edits.
 
 Factory defaults live in `data/cups.config.js`; changing them permanently is a normal code/config change followed by deploy.
+
+## Global defaults
+
+Cross-device defaults use Vercel KV or Upstash Redis through REST env vars:
+
+```bash
+KV_REST_API_URL=...
+KV_REST_API_TOKEN=...
+```
+
+Equivalent Upstash names also work:
+
+```bash
+UPSTASH_REDIS_REST_URL=...
+UPSTASH_REDIS_REST_TOKEN=...
+```
+
+When these env vars are present, opening a calculator loads the saved global
+defaults first. Pressing Save writes every current variable for that calculator
+so the same defaults appear on the next device.

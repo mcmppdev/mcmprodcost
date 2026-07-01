@@ -142,6 +142,33 @@ function getStoredState(slug) {
   }
 }
 
+async function getRemoteState(slug) {
+  const response = await fetch(`/api/defaults?slug=${encodeURIComponent(slug)}`, {
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const data = await response.json();
+  return data.state;
+}
+
+async function saveRemoteState(slug, state) {
+  const response = await fetch("/api/defaults", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ slug, state })
+  });
+
+  if (!response.ok) {
+    throw new Error("Remote defaults could not be saved");
+  }
+}
+
 function withoutVariantFields(values, variantFields = []) {
   return Object.fromEntries(
     Object.entries(values).filter(([field]) => !variantFields.includes(field))
@@ -211,6 +238,18 @@ function isFactoryState(current, factory) {
   );
 }
 
+function makeStatePayload({ hasVariants, selectedVariant, sharedValues, variantValues }) {
+  if (hasVariants) {
+    return {
+      shared: sharedValues,
+      variants: variantValues,
+      selectedVariant
+    };
+  }
+
+  return sharedValues;
+}
+
 export default function CupCalculator({ cup }) {
   const fields = modelFields[cup.modelType];
   const hasVariants = Boolean(cup.variants?.length);
@@ -233,9 +272,31 @@ export default function CupCalculator({ cup }) {
   }, [hasVariants, selectedVariant, sharedValues, variantValues]);
 
   useEffect(() => {
-    const stored = getStoredState(cup.slug);
+    let isCurrent = true;
 
-    if (hasVariants) {
+    async function loadDefaults() {
+      const remote = await getRemoteState(cup.slug).catch(() => null);
+      const stored = remote || getStoredState(cup.slug);
+
+      if (!isCurrent) {
+        return;
+      }
+
+      if (remote && typeof window !== "undefined") {
+        window.localStorage.setItem(storageKey(cup.slug), JSON.stringify(remote));
+      }
+
+      if (!hasVariants) {
+        if (stored) {
+          setSharedValues({ ...factoryState.shared, ...stored });
+          setBaseline(remote ? "Saved global defaults" : "Saved local state");
+        } else {
+          setSharedValues(factoryState.shared);
+          setBaseline("Factory defaults");
+        }
+        return;
+      }
+
       const routeVariant = getRouteVariant(cup);
       const storedVariant = cup.variants.some(
         (variant) => variant.id === stored?.selectedVariant
@@ -249,17 +310,20 @@ export default function CupCalculator({ cup }) {
         ...getStoredSharedState(cup, stored)
       });
       setVariantValues(getStoredVariantState(cup, stored, factoryState.variants));
-      setBaseline(stored ? "Saved local state" : "Factory defaults");
-      return;
+      setBaseline(
+        stored
+          ? remote
+            ? "Saved global defaults"
+            : "Saved local state"
+          : "Factory defaults"
+      );
     }
 
-    if (stored) {
-      setSharedValues({ ...factoryState.shared, ...stored });
-      setBaseline("Saved local state");
-    } else {
-      setSharedValues(factoryState.shared);
-      setBaseline("Factory defaults");
-    }
+    loadDefaults();
+
+    return () => {
+      isCurrent = false;
+    };
   }, [cup, cup.slug, cup.variants, factoryState, hasVariants, initialVariant]);
 
   useEffect(() => {
@@ -328,20 +392,19 @@ export default function CupCalculator({ cup }) {
   }
 
   function saveAsDefault() {
-    if (hasVariants) {
-      window.localStorage.setItem(
-        storageKey(cup.slug),
-        JSON.stringify({
-          shared: sharedValues,
-          variants: variantValues,
-          selectedVariant
-        })
-      );
-    } else {
-      window.localStorage.setItem(storageKey(cup.slug), JSON.stringify(sharedValues));
-    }
+    const payload = makeStatePayload({
+      hasVariants,
+      selectedVariant,
+      sharedValues,
+      variantValues
+    });
 
-    setBaseline("Saved local default");
+    window.localStorage.setItem(storageKey(cup.slug), JSON.stringify(payload));
+
+    setBaseline("Saving global defaults...");
+    saveRemoteState(cup.slug, payload)
+      .then(() => setBaseline("Saved global defaults"))
+      .catch(() => setBaseline("Saved locally; global store unavailable"));
   }
 
   function clearSavedState() {
