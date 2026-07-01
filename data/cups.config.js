@@ -355,41 +355,50 @@ export const cups = [
     name: "60 / 65 ml Short",
     volumeMl: "60 / 65",
     modelType: "A",
-    description: "Shared Model A calculator with size-specific production inputs.",
+    description: "Combined Model A calculator with separate inputs per size.",
     defaults: modelA65.defaults,
     ranges: modelA65.ranges,
     defaultVariant: "65ml-short",
-    variantFields: ["sp", "cpk", "botu", "mach", "cpm", "shifts", "ops", "days"],
+    variantFields: [
+      "sp",
+      "bc",
+      "cpk",
+      "botc",
+      "botu",
+      "cc",
+      "ppk",
+      "cpp",
+      "ppb",
+      "boxr",
+      "mach",
+      "cpm",
+      "shifts",
+      "hrs",
+      "days",
+      "ops",
+      "opS",
+      "sup",
+      "rent",
+      "mech",
+      "trans",
+      "pwr"
+    ],
     variants: [
       {
         id: "60ml-short",
         label: "60 ml",
         volumeMl: 60,
         defaults: {
-          sp: 0.215,
+          ...modelA65.defaults,
           cpk: 980,
-          botu: 360,
-          mach: 3,
-          cpm: 85,
-          shifts: 1,
-          ops: 3,
-          days: 24
+          botu: 360
         }
       },
       {
         id: "65ml-short",
         label: "65 ml",
         volumeMl: 65,
-        defaults: {
-          sp: 0.215,
-          cpk: 920,
-          botu: 390,
-          mach: 3,
-          cpm: 85,
-          shifts: 1,
-          ops: 3,
-          days: 24
-        }
+        defaults: modelA65.defaults
       }
     ]
   },

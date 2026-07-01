@@ -152,6 +152,25 @@ function getStoredSharedState(cup, stored) {
   return withoutVariantFields(stored?.shared || {}, cup.variantFields);
 }
 
+function getStoredVariantState(cup, stored, factoryVariants) {
+  const previousSharedVariantValues = Object.fromEntries(
+    Object.entries(stored?.shared || {}).filter(([field]) =>
+      isVariantField(cup, field)
+    )
+  );
+
+  return Object.fromEntries(
+    cup.variants.map((variant) => [
+      variant.id,
+      {
+        ...factoryVariants[variant.id],
+        ...previousSharedVariantValues,
+        ...(stored?.variants?.[variant.id] || {})
+      }
+    ])
+  );
+}
+
 function getFactoryState(cup) {
   if (!cup.variants?.length) {
     return {
@@ -229,10 +248,7 @@ export default function CupCalculator({ cup }) {
         ...factoryState.shared,
         ...getStoredSharedState(cup, stored)
       });
-      setVariantValues({
-        ...factoryState.variants,
-        ...(stored?.variants || {})
-      });
+      setVariantValues(getStoredVariantState(cup, stored, factoryState.variants));
       setBaseline(stored ? "Saved local state" : "Factory defaults");
       return;
     }
@@ -335,6 +351,8 @@ export default function CupCalculator({ cup }) {
 
   const profitTone = totals.monthlyProfit >= 0 ? "positive" : "negative";
   const isModelA = cup.modelType === "A";
+  const variantInputFields = fields.filter((field) => isVariantField(cup, field));
+  const sharedInputFields = fields.filter((field) => !isVariantField(cup, field));
 
   return (
     <article className="calculator">
@@ -420,23 +438,25 @@ export default function CupCalculator({ cup }) {
         {hasVariants ? (
           <>
             <SliderGroup
-              title={`Variant inputs - ${
+              title={`Variant costs - ${
                 cup.variants.find((variant) => variant.id === selectedVariant)?.label
               }`}
-              fields={fields.filter((field) => isVariantField(cup, field))}
+              fields={variantInputFields}
               cup={cup}
               values={values}
               selectedVariant={selectedVariant}
               onChange={updateValue}
             />
-            <SliderGroup
-              title="Shared fixed costs"
-              fields={fields.filter((field) => !isVariantField(cup, field))}
-              cup={cup}
-              values={values}
-              selectedVariant={selectedVariant}
-              onChange={updateValue}
-            />
+            {sharedInputFields.length > 0 && (
+              <SliderGroup
+                title="Shared inputs"
+                fields={sharedInputFields}
+                cup={cup}
+                values={values}
+                selectedVariant={selectedVariant}
+                onChange={updateValue}
+              />
+            )}
           </>
         ) : (
           <SliderGroup
