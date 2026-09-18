@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { RotateCcw, Save, Trash2 } from "lucide-react";
 import { fieldMeta, modelFields } from "@/data/cups.config";
 
+import { calculateModelA, restoreCostInputs } from "@/data/model-a.mjs";
+
 const storageKey = (slug) => `mcm-cup-state:${slug}`;
 
 function round(value, digits = 4) {
@@ -30,104 +32,8 @@ function formatNumber(value, kind) {
 
   return new Intl.NumberFormat("en-IN", {
     minimumFractionDigits: 2,
-    maximumFractionDigits: 3
+    maximumFractionDigits: kind === "currency" ? 5 : 3
   }).format(value);
-}
-
-function calculateModelA(values) {
-  const cupsPerBox = values.cpp * values.ppb;
-  const dailyOutput =
-    values.mach * values.cpm * 60 * values.hrs * values.shifts;
-  const monthlyOutput = dailyOutput * values.days;
-  const monthlyBoxes = monthlyOutput / cupsPerBox;
-
-  const blankCost = values.bc / values.cpk;
-  const bottomCost = (values.botc * (values.botu / 1000)) / values.cpk;
-  const coverCost = values.cc / values.ppk / values.cpp;
-  const boxCost = values.boxr / cupsPerBox;
-  const materialCost = blankCost + bottomCost + coverCost + boxCost;
-
-  const operatorMonthly = values.ops * values.opS;
-  const laborCost = operatorMonthly / monthlyOutput;
-  const powerMonthly = monthlyBoxes * values.pwr;
-  const powerCost = powerMonthly / monthlyOutput;
-  const directCostPerCup = materialCost + laborCost + powerCost;
-  const contributionPerCup = values.sp - directCostPerCup;
-  const monthlyContribution = contributionPerCup * monthlyOutput;
-
-  const fixedOverheadMonthly =
-    values.rent + values.sup + values.trans + values.mech;
-  const fixedOverheadPerCup = fixedOverheadMonthly / monthlyOutput;
-  const fullyLoadedCostPerCup = directCostPerCup + fixedOverheadPerCup;
-  const netMonthlyProfit = monthlyContribution - fixedOverheadMonthly;
-  const overheadSavingsOpportunity = fixedOverheadMonthly;
-  const savingsPerCup = fixedOverheadPerCup;
-
-  return {
-    cupsPerBox,
-    dailyOutput,
-    monthlyOutput,
-    monthlyBoxes,
-    blankCost,
-    bottomCost,
-    coverCost,
-    boxCost,
-    materialCost,
-    laborCost,
-    powerCost,
-    directCostPerCup,
-    contributionPerCup,
-    monthlyContribution,
-    fixedOverheadMonthly,
-    fixedOverheadPerCup,
-    fullyLoadedCostPerCup,
-    netMonthlyProfit,
-    overheadSavingsOpportunity,
-    savingsPerCup,
-    overheadCost: fixedOverheadPerCup,
-    totalCost: fullyLoadedCostPerCup,
-    profit: contributionPerCup,
-    marginPercent: values.sp ? (contributionPerCup / values.sp) * 100 : 0,
-    monthlyProfit: netMonthlyProfit
-  };
-}
-
-function calculateModelB(values) {
-  const cupsPerBox = values.cpp * values.ppb;
-  const dailyOutput = values.cpm * 60 * values.hrs * values.shift;
-  const monthlyOutput = dailyOutput * values.days;
-  const monthlyBoxes = monthlyOutput / cupsPerBox;
-
-  const blankCost = values.bc / values.cpk;
-  const bottomCost = (values.botc * (values.botu / 1000)) / values.cpk;
-  const coverCost = values.cc / (values.ppk * values.cpp);
-  const boxCost = values.boxr / cupsPerBox;
-  const laborCost = dailyOutput > 0 ? (values.lab * values.ops) / dailyOutput : 0;
-  const powerCost = values.pwr / cupsPerBox;
-  const materialCost = blankCost + bottomCost + coverCost + boxCost;
-
-  const totalCost = materialCost + laborCost + powerCost;
-  const profit = values.sp - totalCost;
-  const monthlyProfit = profit * monthlyOutput;
-
-  return {
-    cupsPerBox,
-    dailyOutput,
-    monthlyOutput,
-    monthlyBoxes,
-    blankCost,
-    bottomCost,
-    coverCost,
-    boxCost,
-    materialCost,
-    laborCost,
-    powerCost,
-    overheadCost: laborCost + powerCost,
-    totalCost,
-    profit,
-    marginPercent: values.sp ? (profit / values.sp) * 100 : 0,
-    monthlyProfit
-  };
 }
 
 function getStoredState(slug) {
@@ -180,22 +86,10 @@ function getStoredSharedState(cup, stored) {
 }
 
 function getStoredVariantState(cup, stored, factoryVariants) {
-  const previousSharedVariantValues = Object.fromEntries(
-    Object.entries(stored?.shared || {}).filter(([field]) =>
-      isVariantField(cup, field)
-    )
-  );
-
-  return Object.fromEntries(
-    cup.variants.map((variant) => [
-      variant.id,
-      {
-        ...factoryVariants[variant.id],
-        ...previousSharedVariantValues,
-        ...(stored?.variants?.[variant.id] || {})
-      }
-    ])
-  );
+  return Object.fromEntries(cup.variants.map((variant) => {
+    const saved = { ...(stored?.shared || {}), ...(stored?.variants?.[variant.id] || {}) };
+    return [variant.id, restoreCostInputs(factoryVariants[variant.id], saved)];
+  }));
 }
 
 function getFactoryState(cup) {
@@ -258,7 +152,8 @@ export default function CupCalculator({ cup }) {
   const [selectedVariant, setSelectedVariant] = useState(initialVariant);
   const [sharedValues, setSharedValues] = useState(factoryState.shared);
   const [variantValues, setVariantValues] = useState(factoryState.variants);
-  const [baseline, setBaseline] = useState("Factory defaults");
+  const [baseline, setBaseline] = useState("Loading saved inputs...");
+  const [defaultsLoaded, setDefaultsLoaded] = useState(false);
 
   const values = useMemo(() => {
     if (!hasVariants) {
@@ -275,8 +170,10 @@ export default function CupCalculator({ cup }) {
     let isCurrent = true;
 
     async function loadDefaults() {
+      setDefaultsLoaded(false);
+      const local = getStoredState(cup.slug);
       const remote = await getRemoteState(cup.slug).catch(() => null);
-      const stored = remote || getStoredState(cup.slug);
+      const stored = remote || local;
 
       if (!isCurrent) {
         return;
@@ -288,12 +185,13 @@ export default function CupCalculator({ cup }) {
 
       if (!hasVariants) {
         if (stored) {
-          setSharedValues({ ...factoryState.shared, ...stored });
+          setSharedValues(restoreCostInputs(factoryState.shared, stored));
           setBaseline(remote ? "Saved global defaults" : "Saved local state");
         } else {
           setSharedValues(factoryState.shared);
           setBaseline("Factory defaults");
         }
+        setDefaultsLoaded(true);
         return;
       }
 
@@ -317,6 +215,7 @@ export default function CupCalculator({ cup }) {
             : "Saved local state"
           : "Factory defaults"
       );
+      setDefaultsLoaded(true);
     }
 
     loadDefaults();
@@ -327,7 +226,7 @@ export default function CupCalculator({ cup }) {
   }, [cup, cup.slug, cup.variants, factoryState, hasVariants, initialVariant]);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (typeof window === "undefined" || !defaultsLoaded) {
       return;
     }
 
@@ -355,6 +254,7 @@ export default function CupCalculator({ cup }) {
     window.localStorage.setItem(storageKey(cup.slug), JSON.stringify(sharedValues));
   }, [
     cup.slug,
+    defaultsLoaded,
     factoryState,
     hasVariants,
     selectedVariant,
@@ -363,8 +263,8 @@ export default function CupCalculator({ cup }) {
   ]);
 
   const totals = useMemo(() => {
-    return cup.modelType === "A" ? calculateModelA(values) : calculateModelB(values);
-  }, [cup.modelType, values]);
+    return calculateModelA(values);
+  }, [values]);
 
   function updateValue(field, nextValue) {
     if (hasVariants && isVariantField(cup, field)) {
@@ -451,53 +351,32 @@ export default function CupCalculator({ cup }) {
       </header>
 
       <section className="summary-strip" aria-label="Cost summary">
-        {isModelA ? (
-          <>
-            <Metric label="Selling price" value={values.sp} />
-            <Metric label="Direct cost/cup" value={totals.directCostPerCup} />
-            <Metric
-              label="Contribution/cup"
-              value={totals.contributionPerCup}
-              tone={totals.contributionPerCup >= 0 ? "positive" : "negative"}
-            />
-            <Metric
-              label="Net monthly profit"
-              value={totals.netMonthlyProfit}
-              kind="currencyDay"
-              tone={profitTone}
-            />
-          </>
-        ) : (
-          <>
-            <Metric label="Selling price" value={values.sp} />
-            <Metric label="Total cost" value={totals.totalCost} />
-            <Metric label="Profit/cup" value={totals.profit} tone={profitTone} />
-            <Metric
-              label="Monthly profit"
-              value={totals.monthlyProfit}
-              kind="currencyDay"
-              tone={profitTone}
-            />
-          </>
-        )}
+        <Metric label="Selling price" value={values.sp} />
+        <Metric label={isModelA ? "Direct cost/cup" : "Total cost"}
+          value={isModelA ? totals.directCostPerCup : totals.totalCost}
+          detail={isModelA ? "Materials + labor + power" : undefined} />
+        <Metric label={isModelA ? "Contribution/cup" : "Profit/cup"}
+          value={isModelA ? totals.contributionPerCup : totals.profit}
+          tone={(isModelA ? totals.contributionPerCup : totals.profit) >= 0 ? "positive" : "negative"} />
+        <Metric label={isModelA ? "Net monthly profit" : "Monthly profit"} value={totals.monthlyProfit} kind="currencyDay" tone={profitTone} />
       </section>
 
       <div className="action-row">
         <span>{baseline}</span>
-        <button type="button" onClick={resetToDefaults}>
+        <button type="button" onClick={resetToDefaults} disabled={!defaultsLoaded}>
           <RotateCcw size={17} aria-hidden="true" />
           Reset
         </button>
-        <button type="button" onClick={saveAsDefault}>
+        <button type="button" onClick={saveAsDefault} disabled={!defaultsLoaded}>
           <Save size={17} aria-hidden="true" />
           Save
         </button>
-        <button type="button" onClick={clearSavedState} aria-label="Clear saved state">
+        <button type="button" onClick={clearSavedState} disabled={!defaultsLoaded} aria-label="Clear saved state">
           <Trash2 size={17} aria-hidden="true" />
         </button>
       </div>
 
-      <section className="input-groups" aria-label="Calculator inputs">
+      <fieldset className="input-groups" aria-label="Calculator inputs" disabled={!defaultsLoaded} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         {hasVariants ? (
           <>
             <SliderGroup
@@ -531,7 +410,7 @@ export default function CupCalculator({ cup }) {
             onChange={updateValue}
           />
         )}
-      </section>
+      </fieldset>
 
       <section className="breakdown" aria-label="Cost breakdown">
         <h2>Breakdown</h2>
@@ -541,38 +420,19 @@ export default function CupCalculator({ cup }) {
         <BreakdownRow label="Box" value={totals.boxCost} />
         <BreakdownRow label="Material total" value={totals.materialCost} />
         <BreakdownRow label="Labor" value={totals.laborCost} />
-        {isModelA ? (
+        <BreakdownRow label="Power per cup" value={totals.powerCost} />
+        {isModelA && (
           <>
-            <BreakdownRow label="Power" value={totals.powerCost} />
-            <BreakdownRow
-              label="Production cost before overhead"
-              value={totals.directCostPerCup}
-            />
-            <BreakdownRow
-              label="Contribution before overhead"
-              value={totals.monthlyContribution}
-            />
-            <BreakdownRow
-              label="Fixed overhead deducted"
-              value={totals.fixedOverheadMonthly}
-            />
-            <BreakdownRow label="Net after overhead" value={totals.netMonthlyProfit} />
-            <BreakdownRow
-              label="Fixed overhead per cup"
-              value={totals.fixedOverheadPerCup}
-            />
-            <BreakdownRow
-              label="Fully loaded cost/cup"
-              value={totals.fullyLoadedCostPerCup}
-            />
-            <BreakdownRow
-              label="Savings opportunity"
-              value={totals.overheadSavingsOpportunity}
-            />
-            <BreakdownRow label="Savings per cup" value={totals.savingsPerCup} />
+            <p>Monthly salaries and rent ÷ 30 × working days. Electricity is charged per machine-hour. Bottom usage in g/kg ÷ 10 gives the percentage.</p>
+            <BreakdownRow label="Operator salaries (full month)" value={totals.operatorMonthly} />
+            <BreakdownRow label="Daily fixed cost (operators + other manpower + rent) ÷ 30" value={totals.dailyFixedCost} />
+            <BreakdownRow label="Daily power cost" value={totals.dailyPowerCost} />
+            <BreakdownRow label="Daily forming cost (fixed + power)" value={totals.totalDailyCost} />
+            <BreakdownRow label="Monthly forming cost" value={totals.totalMonthlyCost} />
+            <BreakdownRow label="Forming cost/cup" value={totals.formingCostPerCup} />
+            <BreakdownRow label="Monthly material cost" value={totals.materialCostPerMonth} />
+            <BreakdownRow label="Fully loaded cost/cup" value={totals.totalCost} />
           </>
-        ) : (
-          <BreakdownRow label="Power" value={totals.powerCost} />
         )}
         <BreakdownRow label="Cups per box" value={totals.cupsPerBox} kind="integer" />
         <BreakdownRow
@@ -630,11 +490,12 @@ function SliderGroup({ title, fields, cup, values, selectedVariant, onChange }) 
   );
 }
 
-function Metric({ label, value, kind = "currency", tone }) {
+function Metric({ label, value, kind = "currency", tone, detail }) {
   return (
     <div className={tone ? `metric ${tone}` : "metric"}>
       <span>{label}</span>
       <strong>Rs {formatNumber(value, kind)}</strong>
+      {detail && <small>{detail}</small>}
     </div>
   );
 }
@@ -645,7 +506,7 @@ function BreakdownRow({ label, value, kind = "currency" }) {
       <span>{label}</span>
       <strong>
         {kind === "currency" ? "Rs " : ""}
-        {formatNumber(round(value), kind)}
+        {formatNumber(value, kind)}
       </strong>
     </div>
   );

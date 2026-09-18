@@ -1,3 +1,5 @@
+import { migrateModelA } from "./model-a.mjs";
+
 const modelA65 = {
   defaults: {
     sp: 0.215,
@@ -17,11 +19,9 @@ const modelA65 = {
     days: 24,
     ops: 3,
     opS: 16500,
-    sup: 22000,
     rent: 25000,
-    mech: 20000,
-    trans: 15000,
-    pwr: 100
+    otherManpowerSalary: 42000,
+    powerCostPerHour: 100 * 85 * 60 / 13500
   },
   ranges: {
     sp: [0.15, 0.3, 0.005],
@@ -41,11 +41,9 @@ const modelA65 = {
     days: [20, 31, 1],
     ops: [1, 10, 1],
     opS: [10000, 25000, 500],
-    sup: [5000, 50000, 500],
     rent: [5000, 50000, 1],
-    mech: [5000, 50000, 1],
-    trans: [0, 30000, 1],
-    pwr: [50, 300, 1]
+    otherManpowerSalary: [0, 150000, 500],
+    powerCostPerHour: [0, 300, 0.01]
   }
 };
 
@@ -348,7 +346,7 @@ function cup({ slug, name, volumeMl, modelType, description, source }) {
   };
 }
 
-export const cups = [
+const configuredCups = [
   {
     slug: "60-65ml-short",
     aliases: ["60ml-short", "65ml-short"],
@@ -377,11 +375,9 @@ export const cups = [
       "days",
       "ops",
       "opS",
-      "sup",
       "rent",
-      "mech",
-      "trans",
-      "pwr"
+      "otherManpowerSalary",
+      "powerCostPerHour"
     ],
     variants: [
       {
@@ -476,9 +472,31 @@ export const cups = [
   })
 ];
 
+export const cups = configuredCups.map((item) => {
+  if (item.modelType === "A") return item;
+  const { lab, shift, pwr, ...ranges } = item.ranges;
+  return {
+    ...item,
+    modelType: "A",
+    description: "Production costing with monthly salaries and hourly machine electricity.",
+    defaults: migrateModelA(item.defaults),
+    ranges: {
+      ...ranges,
+      mach: [1, 10, 1],
+      shifts: shift,
+      opS: lab.map(value => value * 30),
+      rent: [0, 50000, 500],
+      otherManpowerSalary: [0, 150000, 500],
+      powerCostPerHour: [0, 300, 0.01]
+    }
+  };
+});
+
 export const cupRouteSlugs = cups.flatMap((cup) => [cup.slug, ...(cup.aliases || [])]);
 
 export const fieldMeta = {
+  otherManpowerSalary: { label: "Other manpower salary", unit: "Rs/month", kind: "currency" },
+  powerCostPerHour: { label: "Power per machine-hour", unit: "Rs/hour/machine", kind: "currency" },
   sp: { label: "Selling price", unit: "Rs/cup", kind: "currency" },
   bc: { label: "Blank cost", unit: "Rs/kg", kind: "currency" },
   cpk: { label: "Yield", unit: "cups/kg", kind: "integer" },
@@ -524,11 +542,9 @@ export const modelFields = {
     "days",
     "ops",
     "opS",
-    "sup",
     "rent",
-    "mech",
-    "trans",
-    "pwr"
+    "otherManpowerSalary",
+    "powerCostPerHour"
   ],
   B: [
     "sp",
