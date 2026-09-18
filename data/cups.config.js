@@ -20,8 +20,10 @@ const modelA65 = {
     ops: 3,
     opS: 16500,
     rent: 25000,
-    otherManpowerSalary: 42000,
-    powerCostPerHour: 100 * 85 * 60 / 13500
+    sup: 22000,
+    mech: 20000,
+    trans: 15000,
+    pwr: 100
   },
   ranges: {
     sp: [0.15, 0.3, 0.005],
@@ -42,8 +44,10 @@ const modelA65 = {
     ops: [1, 10, 1],
     opS: [10000, 25000, 500],
     rent: [5000, 50000, 1],
-    otherManpowerSalary: [0, 150000, 500],
-    powerCostPerHour: [0, 300, 0.01]
+    sup: [0, 150000, 500],
+    mech: [0, 150000, 500],
+    trans: [0, 50000, 500],
+    pwr: [0, 300, 1]
   }
 };
 
@@ -376,8 +380,10 @@ const configuredCups = [
       "ops",
       "opS",
       "rent",
-      "otherManpowerSalary",
-      "powerCostPerHour"
+      "sup",
+      "mech",
+      "trans",
+      "pwr"
     ],
     variants: [
       {
@@ -478,16 +484,18 @@ export const cups = configuredCups.map((item) => {
   return {
     ...item,
     modelType: "A",
-    description: "Production costing with monthly salaries and hourly machine electricity.",
+    description: "Production costing with monthly salaries and electricity per box.",
     defaults: migrateModelA(item.defaults),
     ranges: {
       ...ranges,
       mach: [1, 10, 1],
       shifts: shift,
-      opS: lab.map(value => value * 30),
+      opS: [0, 50000, 100],
       rent: [0, 50000, 500],
-      otherManpowerSalary: [0, 150000, 500],
-      powerCostPerHour: [0, 300, 0.01]
+      sup: [0, 150000, 500],
+      mech: [0, 150000, 500],
+      trans: [0, 50000, 500],
+      pwr: [0, 300, 1]
     }
   };
 });
@@ -543,8 +551,10 @@ export const modelFields = {
     "ops",
     "opS",
     "rent",
-    "otherManpowerSalary",
-    "powerCostPerHour"
+    "sup",
+    "mech",
+    "trans",
+    "pwr"
   ],
   B: [
     "sp",

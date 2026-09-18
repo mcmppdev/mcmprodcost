@@ -423,13 +423,11 @@ export default function CupCalculator({ cup }) {
         <BreakdownRow label="Power per cup" value={totals.powerCost} />
         {isModelA && (
           <>
-            <p>Monthly salaries and rent ÷ 30 × working days. Electricity is charged per machine-hour. Bottom usage in g/kg ÷ 10 gives the percentage.</p>
-            <BreakdownRow label="Operator salaries (full month)" value={totals.operatorMonthly} />
-            <BreakdownRow label="Daily fixed cost (operators + other manpower + rent) ÷ 30" value={totals.dailyFixedCost} />
-            <BreakdownRow label="Daily power cost" value={totals.dailyPowerCost} />
-            <BreakdownRow label="Daily forming cost (fixed + power)" value={totals.totalDailyCost} />
-            <BreakdownRow label="Monthly forming cost" value={totals.totalMonthlyCost} />
-            <BreakdownRow label="Forming cost/cup" value={totals.formingCostPerCup} />
+            <BreakdownRow label="Total monthly operator salaries" value={totals.operatorMonthly} />
+            <BreakdownRow label="Fixed overhead (rent + mechanic + supervisor + transport)" value={totals.fixedOverheadMonthly} />
+            <BreakdownRow label="Monthly power cost" value={totals.powerMonthly} />
+            <BreakdownRow label="Total monthly overhead (fixed + power)" value={totals.totalOverheadMonthly} />
+            <BreakdownRow label="Overhead cost per cup" value={totals.totalOverheadPerCup} />
             <BreakdownRow label="Monthly material cost" value={totals.materialCostPerMonth} />
             <BreakdownRow label="Fully loaded cost/cup" value={totals.totalCost} />
           </>
