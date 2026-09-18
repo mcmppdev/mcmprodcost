@@ -24,6 +24,7 @@ test("65ml matches every row of the supplied monthly costing table", () => {
     totalOverheadPerCup: "0.02868", directCostPerCup: "0.19127", totalCost: "0.21253" };
   for (const [key, value] of Object.entries(rounded)) assert.equal(r[key].toFixed(5), value, key);
   close(r.materialCostPerMonth, 659385.652173913);
+  close(r.totalProductionCostMonthly, 819445.652173913);
   close(r.monthlyProfit, 9508.347826087);
 });
 
@@ -44,6 +45,7 @@ test("every size reconciles direct cost, full cost, and monthly profit", () => {
       close(r.directCostPerCup, r.materialCost + r.laborCost + r.powerCost);
       close(r.totalCost, r.materialCost + r.laborCost + r.totalOverheadPerCup);
       close(r.totalCost - r.directCostPerCup, r.fixedOverheadMonthly / r.monthlyOutput);
+      close(r.totalProductionCostMonthly, r.totalCost * r.monthlyOutput);
       close(r.monthlyProfit, (v.sp - r.totalCost) * r.monthlyOutput);
     }
   }

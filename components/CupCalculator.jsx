@@ -32,7 +32,7 @@ function formatNumber(value, kind) {
 
   return new Intl.NumberFormat("en-IN", {
     minimumFractionDigits: 2,
-    maximumFractionDigits: kind === "currency" ? 5 : 3
+    maximumFractionDigits: kind === "currency" ? 5 : kind === "moneyMonthly" ? 2 : 3
   }).format(value);
 }
 
@@ -361,6 +361,32 @@ export default function CupCalculator({ cup }) {
         <Metric label={isModelA ? "Net monthly profit" : "Monthly profit"} value={totals.monthlyProfit} kind="currencyDay" tone={profitTone} />
       </section>
 
+      <section className="production-total" aria-label="Total production cost">
+        <h2>Total production cost</h2>
+        <p>Materials + labor + overhead (including power)</p>
+        <p>Totals use unrounded values; displayed amounts may differ slightly when added.</p>
+        <div className="production-total-grid">
+          <div>
+            <h3>Per cup</h3>
+            <BreakdownRow label="Materials" value={totals.materialCost} />
+            <BreakdownRow label="+ Labor" value={totals.laborCost} />
+            <BreakdownRow label="+ Overhead (fixed + power)" value={totals.totalOverheadPerCup} />
+            <div className="production-total-result">
+              <BreakdownRow label="Total production cost/cup" value={totals.totalCost} />
+            </div>
+          </div>
+          <div>
+            <h3>Per month</h3>
+            <BreakdownRow label="Materials" value={totals.materialCostPerMonth} kind="moneyMonthly" />
+            <BreakdownRow label="+ Labor" value={totals.operatorMonthly} kind="moneyMonthly" />
+            <BreakdownRow label="+ Overhead (fixed + power)" value={totals.totalOverheadMonthly} kind="moneyMonthly" />
+            <div className="production-total-result">
+              <BreakdownRow label="Total production cost/month" value={totals.totalProductionCostMonthly} kind="moneyMonthly" />
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div className="action-row">
         <span>{baseline}</span>
         <button type="button" onClick={resetToDefaults} disabled={!defaultsLoaded}>
@@ -503,7 +529,7 @@ function BreakdownRow({ label, value, kind = "currency" }) {
     <div className="breakdown-row">
       <span>{label}</span>
       <strong>
-        {kind === "currency" ? "Rs " : ""}
+        {kind === "currency" || kind === "moneyMonthly" ? "Rs " : ""}
         {formatNumber(value, kind)}
       </strong>
     </div>

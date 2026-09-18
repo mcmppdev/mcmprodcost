@@ -52,13 +52,15 @@ export function calculateModelA(values) {
   const contributionPerCup = v.sp - directCostPerCup;
   const profit = v.sp - totalCost;
   const materialCostPerMonth = materialCost * monthlyOutput;
+  const totalProductionCostMonthly = materialCostPerMonth + operatorMonthly + totalOverheadMonthly;
   return {
     cupsPerBox, dailyOutput, monthlyOutput, monthlyBoxes,
     blankCost, bottomCost, coverCost, boxCost, materialCost, materialCostPerMonth,
     operatorMonthly, laborCost, powerMonthly, powerCost,
     fixedOverheadMonthly, totalOverheadMonthly, totalOverheadPerCup,
     directCostPerCup, totalCost, contributionPerCup, profit,
-    monthlyProfit: v.sp * monthlyOutput - materialCostPerMonth - operatorMonthly - totalOverheadMonthly,
+    totalProductionCostMonthly,
+    monthlyProfit: v.sp * monthlyOutput - totalProductionCostMonthly,
     marginPercent: v.sp ? profit / v.sp * 100 : 0
   };
 }
